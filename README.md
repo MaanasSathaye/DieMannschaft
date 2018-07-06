@@ -3,5 +3,6 @@ A visual analysis of the German National Team's record across the world, taking 
 
 Some country abbreviations were logically constructed because there was no ISO3 available.
 
+Massive thank you to @charleyferrari for the code inspiration
 
 ![alt text](https://upload.wikimedia.org/wikipedia/en/thumb/e/e3/DFBEagle.svg/1200px-DFBEagle.svg.png)
