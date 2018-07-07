@@ -27,6 +27,45 @@ OG = mannschaft['Opponent Goals'].unique()
 
 mannschaft['Date'] = mannschaft['Date'].apply(lambda x: datetime.datetime.strptime(x, '%Y-%m-%d').date())
 
+dates = [np.sort(mannschaft['Date'].unique())[0], np.sort(mannschaft['Date'].unique())[-1]]
+
+countries = ['Albania', 'Algeria', 'Argentina','Armenia', 'Australia', 'Austria', 'Azerbaijan', 'Belarus', 'Belgium', 'Bosnia and Herzegovina', 'Brazil', 'Bulgaria', 'Cameroon', 'Canada', 'Chile', 'China PR', 'Colombia', 'Costa Rica', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Ecuador', 'England', 'Faroe Islands', 'Finland', 'France', 'Georgia', 'Ghana', 'Gibraltar', 'Greece', 'Guatemala', 'Hungary', 'Iceland', 'Iran', 'Israel', 'Italy', 'Ivory Coast', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kuwait', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Macedonia', 'Malaysia', 'Malta', 'Mexico', 'Netherlands', 'Northern Ireland', 'Norway', 'Paraguay', 'Poland', 'Portugal', 'Republic of Ireland', 'Romania', 'Russia', 'San Marino', 'Saudi Arabia', 'Scotland', 'Serbia', 'Serbia and Montenegro', 'Singapore', 'Slovakia', 'Slovenia', 'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland', 'Thailand', 'Tunisia', 'Turkey', 'Ukraine', 'United Arab Emirates', 'United States', 'Uruguay', 'Uzbekistan', 'Wales']
+
+types = ['Wins, Losses, Draws, Ref Nation']
+         
+####### CHOROPLETH DATA
+def makeChoropleth(dates, types, countries, location):
+         
+    chorodata = mannschaft.loc[(mannschaft['Date'] >= dates[0]) & (mannschaft['Date'] <= dates[1]) &
+                              (mannschaft['Opponent'].isin(types)) & (mannschaft['Location'].isin(locations))].copy()
+         
+    chorodata = chorodata.groupby(['code', 'Opponent']).sum()['value'].reset_index()
+    chorodata = pd.merge(mannschaft[['code', 'Opponent']].drop_duplicates().reset_index().drop('index', axis = 1),
+                              chorodata, on=['code', 'Opponent'], how='outer')
+         
+    chorodata = chorodata.loc[chorodata['Opponent'].isin(countries)]
+         
+    data = [
+        go.Choropleth(
+           locations = chorodata['code'],
+           z = chorodata['value'],
+           colorscale = 'Viridis',
+           zmin = 0,
+           zmax = mannschaft.groupby('Opponent').sum()['value'].max()
+           )
+]
+         
+    layout = go.Layout(
+        title = 'I do not know',
+        geo = dict(
+                   center = dict(lon = -60, lat = -12),
+                   projection = dict(scale = 2)
+                   )
+        )
+
+    return go.Figure(data = data, layout = layout)
+####### END CHOROPLETH DATA
+
 
 #map
 df = pd.read_csv('https://raw.githubusercontent.com/MaanasSathaye/DieMannschaft/master/DieMannschaftRecord.csv')
@@ -59,7 +98,8 @@ data = [ dict(
                             ))]
 
 layout = dict(
-              title = 'Die Mannschaft<br>(Hover for detailed info)',
+              font = dict(family = "Times New Roman", size = 18, color='#DD0000'),
+              title ='Die Mannschaft<br>(Hover for detailed info)',
               autosize = True,
               width=1280,
               height=720,
@@ -69,9 +109,9 @@ layout = dict(
                          projection=dict( type='equirectangular' ),
                          showland = True,
                          showcountries = True,
-                         landcolor = "rgb(250, 250, 250)",
+                         landcolor = "rgb(350, 350, 350)",
                          subunitcolor = "rgb(217, 217, 217)",
-                         countrycolor = "rgb(217, 217, 217)",
+                         countrycolor = "rgb(117, 117, 117)",
                          countrywidth = 0.5,
                          subunitwidth = 0.5
                          ),
