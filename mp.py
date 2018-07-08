@@ -20,7 +20,7 @@ mannschaft = pd.merge(mannschaft, countrycodes, on = 'Opponent')
 
 
 opponent = mannschaft['Opponent'].unique()
-location = mannschaft['Location'].unique()
+locations = mannschaft['Location'].unique()
 result = mannschaft['Result'].unique()
 GG = mannschaft['German Goals'].unique()
 OG = mannschaft['Opponent Goals'].unique()
@@ -39,7 +39,7 @@ def makeChoropleth(dates, types, countries, location):
     chorodata = mannschaft.loc[(mannschaft['Date'] >= dates[0]) & (mannschaft['Date'] <= dates[1]) &
                                (mannschaft['Opponent'].isin(types)) & (mannschaft['Location'].isin(locations))].copy()
         
-    chorodata = chorodata.groupby(['code', 'Opponent']).sum()['value'].reset_index()
+    chorodata = chorodata.groupby(['code', 'Opponent']).sum()['German Goals'].reset_index()
     chorodata = pd.merge(mannschaft[['code', 'Opponent']].drop_duplicates().reset_index().drop('index', axis = 1),
                         chorodata, on=['code', 'Opponent'], how='outer')
    
@@ -48,10 +48,10 @@ def makeChoropleth(dates, types, countries, location):
     data = [
            go.Choropleth(
                          locations = chorodata['code'],
-                         z = chorodata['value'],
+                         z = chorodata['German Goals'],
                          colorscale = 'Viridis',
                          zmin = 0,
-                         zmax = mannschaft.groupby('Opponent').sum()['value'].max()
+                         zmax = mannschaft.groupby('Opponent').sum()['German Goals'].max()
                          )
            ]
    
@@ -65,6 +65,102 @@ def makeChoropleth(dates, types, countries, location):
    
     return go.Figure(data = data, layout = layout)
 ####### END CHOROPLETH DATA
+
+
+
+#####random
+
+app.layout = html.Div([
+                       html.Div([
+                                 html.H2('Zika Explorer'),
+                                 html.Div([], className = 'one column'),
+                                 html.Div([
+                                           html.Div([
+                                                     html.P('Country')
+                                                     ], className = 'row'),
+                                           html.Div([
+                                                     dcc.Dropdown(
+                                                                  id = 'countryPicker',
+                                                                  options = [{'label': i, 'value': i} for i in mannschaft['Opponent'].unique()],
+                                                                  multi = True,
+                                                                  value = mannschaft['Opponent'].unique()
+                                                                  )
+                                                     ], className = 'row')
+                                           
+                                           ], className = 'seven columns'),
+                                 html.Div([
+                                           html.Div([
+                                                     html.P('Result')
+                                                     ], className = 'row'),
+                                           html.Div([
+                                                     dcc.Dropdown(
+                                                                  id = 'reportTypePicker',
+                                                                  options = [{'label': i, 'value': i} for i in mannschaft['Result'].unique()],
+                                                                  multi = True,
+                                                                  value = mannschaft['Result'].unique()
+                                                                  )
+                                                     ], className = 'row')
+                                           ], className = 'three columns'),
+                                 html.Div([], className = 'one column')
+                                 ], className = 'row'),
+                       html.Div([
+                                 html.Div([
+                                           dcc.Graph(id = 'countryMap', figure = makeChoropleth(dates, types, countries, locations))
+                                           ], className = 'six columns'),
+                                 html.Div([
+                                           dcc.Graph(id = 'subMap', figure = makeScatterMap(dates, types, countries, locations),
+                                                     selectedData = subMapSelected)
+                                           ], className = 'six columns')
+                                 ], className = 'row'),
+                       html.Div([
+                                 dcc.Graph(id = 'timeSeriesGraph',
+                                           figure = makeTimeSeriesGraph(dates, types, countries, locations),
+                                           selectedData = timeseriesSelected)
+                                 ], className = 'row')
+                       ])
+####end random
+
+def makeScatterMap(dates, types, countries, locations):
+    
+    scattermapdata = mannschaft.loc[(mannschaft['Date'] >= dates[0]) & (mannschaft['Date'] <= dates[1]) &
+                              (mannschaft['Result'].isin(types)) & (mannschaft['Location'].isin(countries))].copy()
+        
+    scattermapdata = scattermapdata.groupby(['location', 'lat', 'lon']).sum()['value'].reset_index()
+                              
+    scattermapdata['text'] = scattermapdata.apply(lambda x: x['location'] + ': ' + str(x['German Goals']) ,axis = 1)
+    scattermapdata['opacity'] = scattermapdata['location'].apply(lambda x: 1 if x in locations else 0.2)
+    scattermapdata['width'] = scattermapdata['location'].apply(lambda x: 1 if x in locations else 0)
+                              
+    data = [
+              go.Scattergeo(
+                            lat = scattermapdata['lat'],
+                            lon = scattermapdata['lon'],
+                            text = scattermapdata['text'],
+                            hoverinfo = 'text',
+                            marker = dict(
+                                          color = scattermapdata['value'],
+                                          colorscale = 'Viridis',
+                                          opacity = scattermapdata['opacity'],
+                                          line = dict(
+                                                      width = scattermapdata['width']
+                                                      )
+                                          )
+                            )
+              ]
+                              
+    layout = go.Layout(
+                     title = 'Zika Cases by Municipality',
+                     dragmode = 'lasso',
+                     geo = dict(
+                                center = dict(lon = -60, lat = -12),
+                                projection = dict(scale = 2)
+                                )
+                     )
+  
+    fig = go.Figure(data = data, layout = layout)
+                              
+    return fig
+
 
 
 #map
@@ -122,7 +218,7 @@ fig = dict( data=data, layout=layout )
 #end_map
 
 
-#### new stuff
+
 def makeTimeSeriesGraph(dates, types, countries, locations):
     
     timeseriesdata = mannschaft.loc[(mannschaft['Result'].isin(types)) & (mannschaft['Opponent'].isin(countries)) &
