@@ -32,37 +32,37 @@ dates = [np.sort(mannschaft['Date'].unique())[0], np.sort(mannschaft['Date'].uni
 countries = ['Albania', 'Algeria', 'Argentina','Armenia', 'Australia', 'Austria', 'Azerbaijan', 'Belarus', 'Belgium', 'Bosnia and Herzegovina', 'Brazil', 'Bulgaria', 'Cameroon', 'Canada', 'Chile', 'China PR', 'Colombia', 'Costa Rica', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Ecuador', 'England', 'Faroe Islands', 'Finland', 'France', 'Georgia', 'Ghana', 'Gibraltar', 'Greece', 'Guatemala', 'Hungary', 'Iceland', 'Iran', 'Israel', 'Italy', 'Ivory Coast', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kuwait', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Macedonia', 'Malaysia', 'Malta', 'Mexico', 'Netherlands', 'Northern Ireland', 'Norway', 'Paraguay', 'Poland', 'Portugal', 'Republic of Ireland', 'Romania', 'Russia', 'San Marino', 'Saudi Arabia', 'Scotland', 'Serbia', 'Serbia and Montenegro', 'Singapore', 'Slovakia', 'Slovenia', 'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland', 'Thailand', 'Tunisia', 'Turkey', 'Ukraine', 'United Arab Emirates', 'United States', 'Uruguay', 'Uzbekistan', 'Wales']
 
 types = ['Wins, Losses, Draws, Ref Nation']
-         
+
 ####### CHOROPLETH DATA
 def makeChoropleth(dates, types, countries, location):
-         
+    
     chorodata = mannschaft.loc[(mannschaft['Date'] >= dates[0]) & (mannschaft['Date'] <= dates[1]) &
-                              (mannschaft['Opponent'].isin(types)) & (mannschaft['Location'].isin(locations))].copy()
-         
+                               (mannschaft['Opponent'].isin(types)) & (mannschaft['Location'].isin(locations))].copy()
+        
     chorodata = chorodata.groupby(['code', 'Opponent']).sum()['value'].reset_index()
     chorodata = pd.merge(mannschaft[['code', 'Opponent']].drop_duplicates().reset_index().drop('index', axis = 1),
-                              chorodata, on=['code', 'Opponent'], how='outer')
-         
+                        chorodata, on=['code', 'Opponent'], how='outer')
+   
     chorodata = chorodata.loc[chorodata['Opponent'].isin(countries)]
-         
+   
     data = [
-        go.Choropleth(
-           locations = chorodata['code'],
-           z = chorodata['value'],
-           colorscale = 'Viridis',
-           zmin = 0,
-           zmax = mannschaft.groupby('Opponent').sum()['value'].max()
-           )
-]
-         
+           go.Choropleth(
+                         locations = chorodata['code'],
+                         z = chorodata['value'],
+                         colorscale = 'Viridis',
+                         zmin = 0,
+                         zmax = mannschaft.groupby('Opponent').sum()['value'].max()
+                         )
+           ]
+   
     layout = go.Layout(
-        title = 'I do not know',
-        geo = dict(
-                   center = dict(lon = -60, lat = -12),
-                   projection = dict(scale = 2)
-                   )
-        )
-
+                      title = 'I do not know',
+                      geo = dict(
+                                 center = dict(lon = -60, lat = -12),
+                                 projection = dict(scale = 2)
+                                 )
+                      )
+   
     return go.Figure(data = data, layout = layout)
 ####### END CHOROPLETH DATA
 
@@ -122,7 +122,34 @@ fig = dict( data=data, layout=layout )
 #end_map
 
 
-
+#### new stuff
+def makeTimeSeriesGraph(dates, types, countries, locations):
+    
+    timeseriesdata = mannschaft.loc[(mannschaft['Result'].isin(types)) & (mannschaft['Opponent'].isin(countries)) &
+                              (mannschaft['Location'].isin(locations))]
+        
+    timeseriesdata = timeseriesdata.groupby('Date').sum()['German Goals'].reset_index().sort_values('Date')
+  
+    timeseriesdata = pd.merge(pd.DataFrame(mannschaft['Date']).drop_duplicates().reset_index().drop('index', axis = 1),
+                            timeseriesdata, on = 'Date', how = 'outer')
+    timeseriesdata = timeseriesdata.sort_values('Date').fillna(0)
+  
+    timeseriesdata['color'] = timeseriesdata['Date'].apply(
+                                                                lambda x: 'rgba(68,6,83,1)' if (x >= dates[0]) & (x <= dates[1]) else 'rgba(68,6,83,0.2)')
+  
+    data = [
+          go.Bar(
+                 x = timeseriesdata['Date'],
+                 y = timeseriesdata['German Goals'],
+                 marker = dict(
+                               color = timeseriesdata['color']
+                               )
+                 )
+          ]
+  
+    layout = go.Layout(title = 'Reports over time', dragmode = 'select', showlegend = False, hovermode = 'closest')
+                              
+    return go.Figure(data = data, layout = layout)
 
 
 app = dash.Dash(__name__)
@@ -134,4 +161,3 @@ app.layout  = html.Div([
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-
